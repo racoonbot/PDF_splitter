@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Разделение PDF на файлы</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  </head>
+  <body>
+    <h1>Разделение PDF на файлы по 20 страниц</h1>
+    <input type="file" id="file-input" accept="application/pdf" />
+    <input type="text" id="filename-input" placeholder="Введите имя файла" />
+    <button id="split-button">Разделить PDF</button>
+    <div id="output"></div>
+
+    <script>
+      document
+        .getElementById("split-button")
+        .addEventListener("click", async () => {
+          const fileInput = document.getElementById("file-input");
+          const filenameInput = document.getElementById("filename-input");
+          const file = fileInput.files[0];
+          const customFilename = filenameInput.value.trim() || "split";
+
+          if (!file) {
+            alert("Пожалуйста, выберите PDF файл.");
+            return;
+          }
+
+          const pdfBytes = await file.arrayBuffer();
+          const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+          const totalPages = pdfDoc.getPageCount();
+          const pagesPerFile = 20;
+
+          for (let i = 0; i < totalPages; i += pagesPerFile) {
+            const newPdfDoc = await PDFLib.PDFDocument.create();
+
+            // Добавляем страницы в новый документ
+            for (let j = 0; j < pagesPerFile && i + j < totalPages; j++) {
+              const [copiedPage] = await newPdfDoc.copyPages(pdfDoc, [i + j]);
+              newPdfDoc.addPage(copiedPage);
+            }
+
+            // Сохраняем новый документ
+            const newPdfBytes = await newPdfDoc.save();
+            downloadPDF(
+              newPdfBytes,
+              `${customFilename}_${Math.floor(i / pagesPerFile) + 1}.pdf`
+            );
+          }
+        });
+
+      function downloadPDF(pdfBytes, filename) {
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    </script>
+  </body>
+</html>
